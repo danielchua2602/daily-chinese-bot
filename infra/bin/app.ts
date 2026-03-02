@@ -12,13 +12,13 @@
  * - Constructs: individual resources (table, function, API gateway).
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { LearnChineseBotStack } from '../lib/learn-chinese-bot-stack';
+import * as cdk from "aws-cdk-lib";
+import { LearnChineseBotStack } from "../lib/learn-chinese-bot-stack";
 
 const app = new cdk.App();
 
-new LearnChineseBotStack(app, 'LearnChineseBotStack', {
+new LearnChineseBotStack(app, "LearnChineseBotStack", {
   env: {
-    region: 'ap-southeast-2',
+    region: "ap-southeast-1",
   },
 });

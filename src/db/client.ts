@@ -12,11 +12,11 @@
  *   so you work with plain JS objects. Much less boilerplate.
  */
 
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 
 const rawClient = new DynamoDBClient({
-  region: process.env.AWS_REGION ?? 'ap-southeast-2',
+  region: process.env.AWS_REGION ?? "ap-southeast-1",
 });
 
 export const docClient = DynamoDBDocumentClient.from(rawClient, {
@@ -28,4 +28,4 @@ export const docClient = DynamoDBDocumentClient.from(rawClient, {
   },
 });
 
-export const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME ?? 'LearnChineseBot';
+export const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME ?? "LearnChineseBot";
