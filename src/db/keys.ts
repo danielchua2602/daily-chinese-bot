@@ -25,6 +25,7 @@ export function userPK(telegramId: number): string {
 
 export const PROFILE_SK = 'PROFILE';
 export const SESSION_SK = 'SESSION';
+export const CONVO_SK = 'CONVO';
 
 export function wordSK(sentAtIso: string): string {
   return `WORD#${sentAtIso}`;

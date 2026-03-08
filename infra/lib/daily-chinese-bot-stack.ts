@@ -18,7 +18,7 @@ import * as schedulerTargets from "aws-cdk-lib/aws-scheduler-targets";
 import type { Construct } from "constructs";
 import * as path from "node:path";
 
-export class LearnChineseBotStack extends cdk.Stack {
+export class DailyChineseBotStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
@@ -26,8 +26,8 @@ export class LearnChineseBotStack extends cdk.Stack {
     // Single table for all entities (users, words, sessions).
     // PAY_PER_REQUEST means we pay per read/write — no capacity planning.
     // PITR (point-in-time recovery) enables continuous backups.
-    const table = new dynamodb.Table(this, "LearnChineseBot", {
-      tableName: "LearnChineseBot",
+    const table = new dynamodb.Table(this, "DailyChineseBot", {
+      tableName: "DailyChineseBot",
       partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
       sortKey: { name: "SK", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -54,6 +54,15 @@ export class LearnChineseBotStack extends cdk.Stack {
       sortKey: { name: "GSI2SK", type: dynamodb.AttributeType.STRING },
     });
 
+    // ─── SSM Parameters ─────────────────────────────────────────
+    // Secrets are stored in SSM Parameter Store (SecureString) and
+    // resolved at deploy time via CloudFormation dynamic references.
+    // The {{resolve:ssm:...}} syntax tells CloudFormation to fetch
+    // the value at deploy time — only the reference string appears
+    // in the template, not the actual secret.
+    const botToken = "{{resolve:ssm:/daily-chinese-bot/bot-token}}";
+    const encryptionKey = "{{resolve:ssm:/daily-chinese-bot/encryption-key}}";
+
     // ─── Shared Lambda configuration ─────────────────────────────
     // NodejsFunction uses esbuild to bundle TypeScript automatically —
     // no separate build step needed for Lambda deployment.
@@ -61,8 +70,8 @@ export class LearnChineseBotStack extends cdk.Stack {
 
     const sharedEnv = {
       DYNAMODB_TABLE_NAME: table.tableName,
-      BOT_TOKEN: process.env.BOT_TOKEN!,
-      ENCRYPTION_KEY: process.env.ENCRYPTION_KEY!,
+      BOT_TOKEN: botToken,
+      ENCRYPTION_KEY: encryptionKey,
     };
 
     // ─── Bot Lambda ──────────────────────────────────────────────
@@ -94,7 +103,7 @@ export class LearnChineseBotStack extends cdk.Stack {
     // Creates a REST API with a single POST /webhook endpoint.
     // Telegram sends webhook updates as POST requests with JSON body.
     const api = new apigateway.RestApi(this, "BotApi", {
-      restApiName: "LearnChineseBotApi",
+      restApiName: "DailyChineseBotApi",
     });
     api.root.addResource("webhook").addMethod("POST", new apigateway.LambdaIntegration(botFn));
 
@@ -102,7 +111,7 @@ export class LearnChineseBotStack extends cdk.Stack {
     // Triggers the scheduler Lambda every minute.
     // EventBridge Scheduler (not legacy Rules) — offers built-in retries,
     // DLQ support, and flexible time windows. Disabled until Phase 4.
-    new scheduler.Schedule(this, "ScheduleRule", {
+    new scheduler.Schedule(this, "SchedulerSchedule", {
       schedule: scheduler.ScheduleExpression.rate(cdk.Duration.minutes(1)),
       target: new schedulerTargets.LambdaInvoke(schedulerFn),
       enabled: false,

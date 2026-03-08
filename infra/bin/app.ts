@@ -13,11 +13,11 @@
  */
 
 import * as cdk from "aws-cdk-lib";
-import { LearnChineseBotStack } from "../lib/learn-chinese-bot-stack";
+import { DailyChineseBotStack } from "../lib/daily-chinese-bot-stack";
 
 const app = new cdk.App();
 
-new LearnChineseBotStack(app, "LearnChineseBotStack", {
+new DailyChineseBotStack(app, "DailyChineseBotStack", {
   env: {
     region: "ap-southeast-1",
   },

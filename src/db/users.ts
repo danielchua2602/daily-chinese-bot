@@ -21,12 +21,13 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import { docClient, TABLE_NAME } from './client.js';
 import { userPK, PROFILE_SK, ACTIVE_GSI1PK, userGSI1SK } from './keys.js';
+import type { AiProviderId } from '../bot/constants.js';
 
 /** Shape of a user profile stored in DynamoDB. */
 export interface UserProfile {
   telegram_id: number;
   username?: string;
-  ai_provider: 'anthropic' | 'gemini' | 'openai';
+  ai_provider: AiProviderId;
   api_key: string; // AES-256-GCM encrypted
   hsk_level: number;
   timezone: string;

@@ -19,10 +19,8 @@
  * might type "america/new_york" instead of "America/New_York".
  */
 export function validateTimezone(input: string): string | null {
-  const supported = Intl.supportedValuesOf('timeZone');
-  const match = supported.find(
-    (tz) => tz.toLowerCase() === input.toLowerCase()
-  );
+  const supported = Intl.supportedValuesOf("timeZone");
+  const match = supported.find((tz) => tz.toLowerCase() === input.toLowerCase());
   return match ?? null;
 }
 
@@ -36,7 +34,7 @@ export function validateTimezone(input: string): string | null {
  */
 export function getUserLocalTime(timezone: string, now?: Date): Date {
   const timestamp = now ?? new Date();
-  return new Date(timestamp.toLocaleString('en-US', { timeZone: timezone }));
+  return new Date(timestamp.toLocaleString("en-US", { timeZone: timezone }));
 }
 
 /**
@@ -47,7 +45,7 @@ export function getUserLocalTime(timezone: string, now?: Date): Date {
  */
 export function getUserLocalDate(timezone: string, now?: Date): string {
   const timestamp = now ?? new Date();
-  return timestamp.toLocaleDateString('en-CA', { timeZone: timezone });
+  return timestamp.toLocaleDateString("en-CA", { timeZone: timezone });
 }
 
 /**
@@ -56,19 +54,14 @@ export function getUserLocalDate(timezone: string, now?: Date): string {
  */
 export function getUserLocalDayName(timezone: string, now?: Date): string {
   const userTime = getUserLocalTime(timezone, now);
-  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
   return days[userTime.getDay()];
 }
 
 /**
  * Checks if the user's current local time matches a target hour:minute.
  */
-export function isTimeMatch(
-  timezone: string,
-  targetHour: number,
-  targetMinute: number,
-  now?: Date
-): boolean {
+export function isTimeMatch(timezone: string, targetHour: number, targetMinute: number, now?: Date): boolean {
   const userTime = getUserLocalTime(timezone, now);
   return userTime.getHours() === targetHour && userTime.getMinutes() === targetMinute;
 }
@@ -87,24 +80,24 @@ export function isTimeMatch(
  */
 export const TIMEZONE_CITIES: { label: string; timezone: string }[] = [
   // Americas
-  { label: 'New York', timezone: 'America/New_York' },
-  { label: 'Chicago', timezone: 'America/Chicago' },
-  { label: 'Denver', timezone: 'America/Denver' },
-  { label: 'Los Angeles', timezone: 'America/Los_Angeles' },
-  { label: 'São Paulo', timezone: 'America/Sao_Paulo' },
+  { label: "New York", timezone: "America/New_York" },
+  { label: "Chicago", timezone: "America/Chicago" },
+  { label: "Denver", timezone: "America/Denver" },
+  { label: "Los Angeles", timezone: "America/Los_Angeles" },
+  { label: "São Paulo", timezone: "America/Sao_Paulo" },
   // Europe / Africa
-  { label: 'London', timezone: 'Europe/London' },
-  { label: 'Paris', timezone: 'Europe/Paris' },
-  { label: 'Moscow', timezone: 'Europe/Moscow' },
+  { label: "London", timezone: "Europe/London" },
+  { label: "Paris", timezone: "Europe/Paris" },
+  { label: "Moscow", timezone: "Europe/Moscow" },
   // Middle East / South Asia
-  { label: 'Dubai', timezone: 'Asia/Dubai' },
-  { label: 'Mumbai', timezone: 'Asia/Kolkata' },
+  { label: "Dubai", timezone: "Asia/Dubai" },
+  { label: "Mumbai", timezone: "Asia/Kolkata" },
   // East / Southeast Asia
-  { label: 'Singapore', timezone: 'Asia/Singapore' },
-  { label: 'Shanghai', timezone: 'Asia/Shanghai' },
-  { label: 'Tokyo', timezone: 'Asia/Tokyo' },
-  { label: 'Seoul', timezone: 'Asia/Seoul' },
+  { label: "Singapore", timezone: "Asia/Singapore" },
+  { label: "Shanghai", timezone: "Asia/Shanghai" },
+  { label: "Tokyo", timezone: "Asia/Tokyo" },
+  { label: "Seoul", timezone: "Asia/Seoul" },
   // Oceania
-  { label: 'Sydney', timezone: 'Australia/Sydney' },
-  { label: 'Auckland', timezone: 'Pacific/Auckland' },
+  { label: "Sydney", timezone: "Australia/Sydney" },
+  { label: "Auckland", timezone: "Pacific/Auckland" },
 ];
