@@ -13,6 +13,8 @@ import type { BotContext } from "./types.js";
 import { getUser, updateUser } from "../db/users.js";
 import { decrypt } from "../utils/crypto.js";
 import { PROVIDER_DISPLAY } from "./constants.js";
+import { sendDailyWords } from "../services/send-words.js";
+import { ProviderError } from "../ai/provider.js";
 
 /**
  * /start — Welcome message + prompt to begin onboarding.
@@ -104,4 +106,36 @@ export async function handleStop(ctx: BotContext): Promise<void> {
 export async function handleResume(ctx: BotContext): Promise<void> {
   await updateUser(ctx.from!.id, { is_active: true });
   await ctx.reply("▶️ Daily word delivery resumed!");
+}
+
+/**
+ * /today — Get today's words on demand.
+ *
+ * Uses the same sendDailyWords pipeline as the scheduler, so the user
+ * gets identical results whether words come from /today or the daily schedule.
+ * We pass ctx.api so sendDailyWords can send messages without needing a
+ * Grammy context (it also works from the scheduler Lambda).
+ */
+export async function handleToday(ctx: BotContext): Promise<void> {
+  const user = await getUser(ctx.from!.id);
+
+  if (!user) {
+    await ctx.reply("You haven't set up yet. Use /setup to get started.");
+    return;
+  }
+
+  await ctx.reply("Generating your words... ⏳");
+
+  try {
+    await sendDailyWords(user, ctx.api);
+  } catch (error) {
+    if (error instanceof ProviderError) {
+      await ctx.reply(error.userMessage);
+    } else {
+      await ctx.reply(
+        "Something went wrong generating your words. Please try again.\n\n" +
+          "If the problem persists, check your API key with /setup.",
+      );
+    }
+  }
 }

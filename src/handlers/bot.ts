@@ -25,7 +25,7 @@ import { Bot, webhookCallback } from "grammy";
 import { conversations, createConversation } from "@grammyjs/conversations";
 import type { BotContext } from "../bot/types.js";
 import { createConversationStorage } from "../db/conversation-storage.js";
-import { handleStart, handleHelp, handleSettings, handleStop, handleResume } from "../bot/commands.js";
+import { handleStart, handleHelp, handleSettings, handleStop, handleResume, handleToday } from "../bot/commands.js";
 import { setupConversation, SETUP_CONVERSATION_ID } from "../bot/conversations/setup.js";
 import { settimeConversation, SETTIME_CONVERSATION_ID } from "../bot/conversations/settime.js";
 import { setrecapConversation, SETRECAP_CONVERSATION_ID } from "../bot/conversations/setrecap.js";
@@ -62,6 +62,7 @@ bot.command("setup", (ctx) => ctx.conversation.enter(SETUP_CONVERSATION_ID));
 bot.command("settime", (ctx) => ctx.conversation.enter(SETTIME_CONVERSATION_ID));
 bot.command("setrecap", (ctx) => ctx.conversation.enter(SETRECAP_CONVERSATION_ID));
 bot.command("settings", handleSettings);
+bot.command("today", handleToday);
 bot.command("stop", handleStop);
 bot.command("resume", handleResume);
 

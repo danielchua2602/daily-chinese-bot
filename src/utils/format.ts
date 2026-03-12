@@ -11,18 +11,10 @@
  * (losing content), we split into multiple messages sent sequentially.
  */
 
-import type { StoredWord } from '../db/words.js';
+import type { StoredWord } from "../db/words.js";
+import type { WordResult } from "../ai/provider.js";
 
 const TELEGRAM_MAX_LENGTH = 4096;
-
-export interface WordForDisplay {
-  chinese: string;
-  pinyin: string;
-  english: string;
-  example_sentence: string;
-  example_pinyin: string;
-  example_english: string;
-}
 
 /**
  * Formats a list of words into the daily message format.
@@ -30,19 +22,28 @@ export interface WordForDisplay {
  * Returns an array of strings — usually just one, but multiple if the
  * content exceeds Telegram's limit.
  */
-export function formatDailyWords(words: WordForDisplay[], date: string): string[] {
+export function formatDailyWords(words: WordResult[], date: string): string[] {
   const header = `📚 Daily Chinese Words — ${date}\n\n`;
 
   const wordBlocks = words.map((word, i) => {
     return [
       `${i + 1}. ${word.chinese} (${word.pinyin}) — ${word.english}`,
-      `   💬 ${word.example_sentence}`,
-      `      ${word.example_pinyin}`,
-      `      ${word.example_english}`,
-    ].join('\n');
+      `Sentence: ${word.example_sentence}`,
+      `Pinyin: ${word.example_pinyin}`,
+      `English: ${word.example_english}`,
+    ].join("\n");
   });
 
-  return splitMessage(header + wordBlocks.join('\n\n'));
+  return splitMessage(header + wordBlocks.join("\n\n"));
+}
+
+/**
+ * Converts "2026-03-10" into a human-friendly "March 10" for the message header.
+ */
+export function formatDisplayDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.toLocaleDateString("en-US", { month: "long", day: "numeric" });
 }
 
 /**
@@ -51,12 +52,9 @@ export function formatDailyWords(words: WordForDisplay[], date: string): string[
  * Takes words with their local_date and groups them by date,
  * showing a compact summary per day.
  */
-export function formatWeeklyRecap(
-  words: StoredWord[],
-  weekNumber: number
-): string[] {
+export function formatWeeklyRecap(words: StoredWord[], weekNumber: number): string[] {
   if (words.length === 0) {
-    return ['📖 No words learned this week. Use /today to get started!'];
+    return ["📖 No words learned this week. Use /today to get started!"];
   }
 
   // Group words by local_date
@@ -71,14 +69,15 @@ export function formatWeeklyRecap(
 
   const dayLines: string[] = [];
   for (const [date, dayWords] of byDate) {
-    const dayName = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' });
-    const wordList = dayWords.map((w) => `${w.chinese} (${w.pinyin})`).join(', ');
+    // Maybe format this formatDisplayDate?
+    const dayName = new Date(date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short" });
+    const wordList = dayWords.map((w) => `${w.chinese} (${w.pinyin})`).join(", ");
     dayLines.push(`${dayName}: ${wordList}`);
   }
 
-  const footer = '\nKeep it up! 💪';
+  const footer = "\nKeep it up! 💪";
 
-  return splitMessage(header + dayLines.join('\n') + footer);
+  return splitMessage(header + dayLines.join("\n") + footer);
 }
 
 /**
@@ -101,11 +100,11 @@ function splitMessage(text: string): string[] {
     }
 
     // Find the last double-newline within the limit
-    let splitIndex = remaining.lastIndexOf('\n\n', TELEGRAM_MAX_LENGTH);
+    let splitIndex = remaining.lastIndexOf("\n\n", TELEGRAM_MAX_LENGTH);
 
     // Fall back to single newline if no paragraph break found
     if (splitIndex === -1 || splitIndex === 0) {
-      splitIndex = remaining.lastIndexOf('\n', TELEGRAM_MAX_LENGTH);
+      splitIndex = remaining.lastIndexOf("\n", TELEGRAM_MAX_LENGTH);
     }
 
     // Last resort: hard cut at the limit
