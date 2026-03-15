@@ -109,12 +109,10 @@ export class DailyChineseBotStack extends cdk.Stack {
 
     // ─── EventBridge Scheduler ─────────────────────────────────────
     // Triggers the scheduler Lambda every minute.
-    // EventBridge Scheduler (not legacy Rules) — offers built-in retries,
-    // DLQ support, and flexible time windows. Disabled until Phase 4.
     new scheduler.Schedule(this, "SchedulerSchedule", {
       schedule: scheduler.ScheduleExpression.rate(cdk.Duration.minutes(1)),
       target: new schedulerTargets.LambdaInvoke(schedulerFn),
-      enabled: false,
+      enabled: true,
     });
 
     // ─── Permissions ─────────────────────────────────────────────

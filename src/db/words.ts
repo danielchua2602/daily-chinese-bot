@@ -34,7 +34,7 @@ export interface StoredWord extends WordResult {
  * indexed by user + local_date, so this is a fast key lookup — not a scan.
  * We only need to know if ANY item exists (Limit: 1), not how many.
  */
-export async function hasWordsForDate(telegramId: number, localDate: string): Promise<boolean> {
+export async function hasGeneratedWordsForDate(telegramId: number, localDate: string): Promise<boolean> {
   const result = await docClient.send(
     new QueryCommand({
       TableName: TABLE_NAME,
