@@ -10,7 +10,7 @@
  *   GSI2SK = <YYYY-MM-DD>  (user's local date)
  *
  * Access patterns:
- * - hasWordsForDate()   → GSI2 query to check double-send prevention
+ * - hasGeneratedWordsForDate() → GSI2 query to check double-send prevention
  * - getWordsForDateRange() → GSI2 query for weekly recap
  * - getRecentWords()    → Main table query for exclude list (last ~200 words)
  * - saveWords()         → BatchWrite multiple word items at once

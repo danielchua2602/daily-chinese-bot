@@ -108,9 +108,9 @@ export class DailyChineseBotStack extends cdk.Stack {
     api.root.addResource("webhook").addMethod("POST", new apigateway.LambdaIntegration(botFn));
 
     // ─── EventBridge Scheduler ─────────────────────────────────────
-    // Triggers the scheduler Lambda every minute.
+    // Triggers the scheduler Lambda at :00, :15, :30, :45 every hour.
     new scheduler.Schedule(this, "SchedulerSchedule", {
-      schedule: scheduler.ScheduleExpression.rate(cdk.Duration.minutes(1)),
+      schedule: scheduler.ScheduleExpression.expression('cron(0/15 * * * ? *)'),
       target: new schedulerTargets.LambdaInvoke(schedulerFn),
       enabled: true,
     });
