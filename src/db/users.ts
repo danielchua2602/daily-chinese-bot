@@ -22,6 +22,7 @@ import {
 import { docClient, TABLE_NAME } from './client.js';
 import { userPK, PROFILE_SK, ACTIVE_GSI1PK, userGSI1SK } from './keys.js';
 import type { AiProviderId } from '../bot/constants.js';
+import type { DayName } from '../utils/timezone.js';
 
 /** Shape of a user profile stored in DynamoDB. */
 export interface UserProfile {
@@ -34,7 +35,7 @@ export interface UserProfile {
   send_hour: number;
   send_minute: number;
   daily_word_count: number;
-  recap_day: string;
+  recap_day: DayName;
   recap_hour: number;
   recap_minute: number;
   is_active: boolean;

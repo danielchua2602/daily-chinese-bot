@@ -48,14 +48,14 @@ export function getUserLocalDate(timezone: string, now?: Date): string {
   return timestamp.toLocaleDateString("en-CA", { timeZone: timezone });
 }
 
-/**
- * Gets the day of week name (lowercase) in the user's timezone.
- * Returns: 'sunday' | 'monday' | ... | 'saturday'
- */
-export function getUserLocalDayName(timezone: string, now?: Date): string {
+export type DayName = "sunday" | "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday";
+
+const DAY_NAMES: DayName[] = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+
+/** Gets the day of week name (lowercase) in the user's timezone. */
+export function getUserLocalDayName(timezone: string, now?: Date): DayName {
   const userTime = getUserLocalTime(timezone, now);
-  const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-  return days[userTime.getDay()];
+  return DAY_NAMES[userTime.getDay()];
 }
 
 /**
@@ -64,6 +64,29 @@ export function getUserLocalDayName(timezone: string, now?: Date): string {
 export function isTimeMatch(timezone: string, targetHour: number, targetMinute: number, now?: Date): boolean {
   const userTime = getUserLocalTime(timezone, now);
   return userTime.getHours() === targetHour && userTime.getMinutes() === targetMinute;
+}
+
+/** Formats a Date as YYYY-MM-DD (matching DynamoDB's GSI2SK format). */
+export function formatLocalDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Returns the ISO 8601 week number for a given date.
+ *
+ * Algorithm: find the nearest Thursday (ISO weeks start on Monday),
+ * then calculate how many weeks into the year that Thursday falls.
+ */
+export function getISOWeekNumber(date: Date): number {
+  const tmp = new Date(date.getTime());
+  tmp.setHours(0, 0, 0, 0);
+  // Set to nearest Thursday: current date + 4 - current day number (Monday=1, Sunday=7)
+  tmp.setDate(tmp.getDate() + 4 - (tmp.getDay() || 7));
+  const yearStart = new Date(tmp.getFullYear(), 0, 1);
+  return Math.ceil(((tmp.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
 }
 
 /**

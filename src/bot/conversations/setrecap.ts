@@ -9,6 +9,7 @@ import type { Conversation } from "@grammyjs/conversations";
 import type { Context } from "grammy";
 import type { BotContext } from "../types.js";
 import { updateUser } from "../../db/users.js";
+import type { DayName } from "../../utils/timezone.js";
 import { dayOfWeekKeyboard, hourKeyboard, minuteKeyboard } from "../keyboards.js";
 
 export const SETRECAP_CONVERSATION_ID = "setrecap";
@@ -28,7 +29,7 @@ export async function setrecapConversation(
       await ctx.reply("Please tap one of the day buttons above.");
     },
   });
-  const recap_day = dayCtx.callbackQuery.data!.replace("day:", "");
+  const recap_day = dayCtx.callbackQuery.data!.replace("day:", "") as DayName;
   await dayCtx.answerCallbackQuery();
 
   // Step 2 — pick hour

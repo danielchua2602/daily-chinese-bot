@@ -1,11 +1,11 @@
 /**
- * Scheduler Lambda entry point — triggered by EventBridge every minute.
+ * Scheduler Lambda entry point — triggered by EventBridge every 15 minutes.
  *
  * Each tick:
  * 1. Fetches all active users from GSI1
- * 2. Filters to users whose local time matches their send_hour:send_minute
- * 3. Checks double-send prevention (skip if words already generated today)
- * 4. Calls sendDailyWords() with p-limit(5) concurrency
+ * 2. Filters to users due for daily words (send_hour:send_minute match)
+ * 3. Filters to users due for weekly recap (recap_day + recap_hour:recap_minute match)
+ * 4. Processes both groups with p-limit(5) concurrency
  *
  * Error handling:
  * - Telegram 403 (user blocked bot) → deactivate silently
@@ -21,7 +21,8 @@ import type { UserProfile } from "../db/users.js";
 import { hasGeneratedWordsForDate } from "../db/words.js";
 import { sendDailyWords } from "../services/send-words.js";
 import { ProviderError } from "../ai/provider.js";
-import { getUserLocalDate, isTimeMatch } from "../utils/timezone.js";
+import { getUserLocalDate, getUserLocalDayName, isTimeMatch } from "../utils/timezone.js";
+import { sendRecap } from "../services/send-recap.js";
 
 /**
  * Module-level logger and Api instance — created once and reused across
@@ -40,7 +41,7 @@ const logger = pino({ name: "scheduler" });
 const api = new Api(process.env.BOT_TOKEN!);
 
 /**
- * Main handler — EventBridge invokes this every minute.
+ * Main handler — EventBridge invokes this every 15 minutes.
  *
  * The flow is intentionally simple: fetch → filter → process.
  * Most minutes, no users are due, so we return early after the filter step.
@@ -72,22 +73,34 @@ export const handler = async (_event: ScheduledEvent): Promise<void> => {
   // isTimeMatch converts UTC to the user's timezone and checks hour:minute.
   // Example: if it's 00:00 UTC and a user in Asia/Singapore (UTC+8) has
   // send_hour=8, send_minute=0, isTimeMatch returns true.
-  const dueUsers = users.filter((user) => isTimeMatch(user.timezone, user.send_hour, user.send_minute, now));
+  const wordsDue = users.filter((user) => isTimeMatch(user.timezone, user.send_hour, user.send_minute, now));
 
-  if (dueUsers.length === 0) {
-    logger.info("no users due this minute");
+  // Step 3: Filter to users due for weekly recap.
+  // Must match both the day of week AND the time.
+  const recapDue = users.filter(
+    (user) =>
+      getUserLocalDayName(user.timezone, now) === user.recap_day &&
+      isTimeMatch(user.timezone, user.recap_hour, user.recap_minute, now),
+  );
+
+  if (wordsDue.length === 0 && recapDue.length === 0) {
+    logger.info("no users due this tick");
     return;
   }
 
-  logger.info({ dueUserCount: dueUsers.length }, "processing due users");
+  logger.info({ wordsDueCount: wordsDue.length, recapDueCount: recapDue.length }, "processing due users");
 
-  // Step 3: Process all due users concurrently with p-limit(5).
-  const results = await Promise.allSettled(dueUsers.map((user) => limit(() => processUser(user, now))));
+  // Step 4: Process both groups concurrently with p-limit(5).
+  // Promise.allSettled ensures one user's failure doesn't block others.
+  const results = await Promise.allSettled([
+    ...wordsDue.map((user) => limit(() => processUser(user, now))),
+    ...recapDue.map((user) => limit(() => processRecapUser(user, now))),
+  ]);
 
-  // Step 4: Log summary for observability
+  // Step 5: Log summary for observability
   const succeeded = results.filter((r) => r.status === "fulfilled").length;
   const failed = results.filter((r) => r.status === "rejected").length;
-  logger.info({ succeeded, failed, total: dueUsers.length }, "scheduler tick complete");
+  logger.info({ succeeded, failed, total: results.length }, "scheduler tick complete");
 };
 
 /**
@@ -116,6 +129,24 @@ async function processUser(user: UserProfile, now: Date): Promise<void> {
   try {
     await sendDailyWords(user, api, localDate);
     userLog.info("daily words sent successfully");
+  } catch (error) {
+    await handleUserError(error, user, userLog);
+  }
+}
+
+/**
+ * Processes a single user's weekly recap: fetches past week's words, formats, sends.
+ *
+ * No double-send prevention needed here — recap only triggers once per week
+ * because the day-of-week filter in the handler already limits it.
+ */
+async function processRecapUser(user: UserProfile, now: Date): Promise<void> {
+  const userLog = logger.child({ telegramId: user.telegram_id, task: "recap" });
+  userLog.info("sending weekly recap");
+
+  try {
+    await sendRecap(user, api, now);
+    userLog.info("weekly recap sent successfully");
   } catch (error) {
     await handleUserError(error, user, userLog);
   }

@@ -27,6 +27,7 @@ import type { UserProfile } from "../../db/users.js";
 import { upsertUser } from "../../db/users.js";
 import { encrypt } from "../../utils/crypto.js";
 import { validateTimezone } from "../../utils/timezone.js";
+import type { DayName } from "../../utils/timezone.js";
 import {
   aiProviderKeyboard,
   hskLevelKeyboard,
@@ -164,7 +165,7 @@ export async function setupConversation(conversation: Conversation<BotContext, C
   const dayCtx = await conversation.waitForCallbackQuery(/^day:/, {
     otherwise: (ctx) => ctx.reply("Please tap one of the buttons above."),
   });
-  const recapDay = dayCtx.callbackQuery.data!.replace("day:", "");
+  const recapDay = dayCtx.callbackQuery.data!.replace("day:", "") as DayName;
   await dayCtx.answerCallbackQuery();
 
   // ---------- Step 9: Recap hour + minute ----------
