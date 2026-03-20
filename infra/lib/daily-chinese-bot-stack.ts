@@ -1,11 +1,11 @@
 /**
  * What this creates:
  * 1. DynamoDB table (single-table design) with 2 GSIs
- * 2. Bot Lambda (handles Telegram webhooks)
- * 3. Scheduler Lambda (runs every minute via EventBridge)
+ * 2. Bot Lambda (handles Telegram webhooks, secured with secret token)
+ * 3. Scheduler Lambda (runs every 15 min via EventBridge)
  * 4. API Gateway (receives Telegram webhook POST requests)
- * 5. EventBridge Scheduler (triggers scheduler every minute)
- *
+ * 5. EventBridge Scheduler (triggers scheduler every 15 min)
+ * 6. CloudWatch alarms + SNS email notifications (if ALARM_EMAIL is set)
  */
 
 import * as cdk from "aws-cdk-lib";
@@ -13,6 +13,10 @@ import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as lambda from "aws-cdk-lib/aws-lambda-nodejs";
 import * as lambdaRuntime from "aws-cdk-lib/aws-lambda";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
+import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
+import * as cloudwatchActions from "aws-cdk-lib/aws-cloudwatch-actions";
+import * as sns from "aws-cdk-lib/aws-sns";
+import * as snsSubscriptions from "aws-cdk-lib/aws-sns-subscriptions";
 import * as scheduler from "aws-cdk-lib/aws-scheduler";
 import * as schedulerTargets from "aws-cdk-lib/aws-scheduler-targets";
 import type { Construct } from "constructs";
@@ -55,13 +59,13 @@ export class DailyChineseBotStack extends cdk.Stack {
     });
 
     // ─── SSM Parameters ─────────────────────────────────────────
-    // Secrets are stored in SSM Parameter Store (SecureString) and
-    // resolved at deploy time via CloudFormation dynamic references.
-    // The {{resolve:ssm:...}} syntax tells CloudFormation to fetch
-    // the value at deploy time — only the reference string appears
-    // in the template, not the actual secret.
-    const botToken = "{{resolve:ssm:/daily-chinese-bot/bot-token}}";
-    const encryptionKey = "{{resolve:ssm:/daily-chinese-bot/encryption-key}}";
+    // Secrets are stored in SSM Parameter Store as SecureString and
+    // resolved via CloudFormation dynamic references. The ssm-secure
+    // syntax ensures the actual value never appears in the rendered
+    // CloudFormation template — it's only decrypted at runtime by Lambda.
+    const botToken = "{{resolve:ssm-secure:/daily-chinese-bot/bot-token}}";
+    const encryptionKey = "{{resolve:ssm-secure:/daily-chinese-bot/encryption-key}}";
+    const webhookSecret = "{{resolve:ssm-secure:/daily-chinese-bot/webhook-secret}}";
 
     // ─── Shared Lambda configuration ─────────────────────────────
     // NodejsFunction uses esbuild to bundle TypeScript automatically —
@@ -84,7 +88,10 @@ export class DailyChineseBotStack extends cdk.Stack {
       runtime: lambdaRuntime.Runtime.NODEJS_20_X,
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
-      environment: sharedEnv,
+      environment: {
+        ...sharedEnv,
+        WEBHOOK_SECRET: webhookSecret,
+      },
     });
 
     // ─── Scheduler Lambda ────────────────────────────────────────
@@ -118,6 +125,61 @@ export class DailyChineseBotStack extends cdk.Stack {
     // ─── Permissions ─────────────────────────────────────────────
     table.grantReadWriteData(botFn);
     table.grantReadWriteData(schedulerFn);
+
+    // ─── Monitoring ──────────────────────────────────────────────
+    // SNS topic for alarm notifications. Alarms publish here,
+    // and email subscribers receive the alerts.
+    const alarmTopic = new sns.Topic(this, "AlarmTopic", {
+      displayName: "DailyChineseBot Alarms",
+    });
+
+    // Only subscribe if ALARM_EMAIL is set in the environment.
+    // This is evaluated at synth time (not deploy time), so set it
+    // before running `cdk deploy`: ALARM_EMAIL=you@example.com npx cdk deploy
+    const alarmEmail = process.env.ALARM_EMAIL;
+    if (alarmEmail) {
+      alarmTopic.addSubscription(
+        new snsSubscriptions.EmailSubscription(alarmEmail),
+      );
+    }
+
+    const alarmAction = new cloudwatchActions.SnsAction(alarmTopic);
+
+    // Bot Lambda errors — "the bot is broken for users right now"
+    botFn
+      .metricErrors({ period: cdk.Duration.minutes(5) })
+      .createAlarm(this, "BotLambdaErrorAlarm", {
+        alarmDescription: "Bot Lambda errors >= 1 in 5 minutes",
+        threshold: 1,
+        evaluationPeriods: 1,
+        comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+      })
+      .addAlarmAction(alarmAction);
+
+    // Scheduler Lambda errors — "daily words / recaps aren't being delivered"
+    schedulerFn
+      .metricErrors({ period: cdk.Duration.minutes(5) })
+      .createAlarm(this, "SchedulerLambdaErrorAlarm", {
+        alarmDescription: "Scheduler Lambda errors >= 1 in 5 minutes",
+        threshold: 1,
+        evaluationPeriods: 1,
+        comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+      })
+      .addAlarmAction(alarmAction);
+
+    // API Gateway 5xx — "requests aren't even reaching Lambda"
+    api
+      .metricServerError({ period: cdk.Duration.minutes(5) })
+      .createAlarm(this, "ApiGateway5xxAlarm", {
+        alarmDescription: "API Gateway 5xx errors >= 1 in 5 minutes",
+        threshold: 1,
+        evaluationPeriods: 1,
+        comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+      })
+      .addAlarmAction(alarmAction);
 
     // ─── Outputs ─────────────────────────────────────────────────
     // Print the API Gateway URL after deploy — needed to register

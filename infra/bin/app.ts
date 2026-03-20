@@ -12,6 +12,7 @@
  * - Constructs: individual resources (table, function, API gateway).
  */
 
+import "dotenv/config";
 import * as cdk from "aws-cdk-lib";
 import { DailyChineseBotStack } from "../lib/daily-chinese-bot-stack";
 

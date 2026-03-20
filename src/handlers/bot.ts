@@ -73,4 +73,6 @@ bot.command("resume", handleResume);
  * signature: (event, context) => Promise<APIGatewayProxyResult>.
  * We export it directly — no wrapper needed.
  */
-export const handler = webhookCallback(bot, "aws-lambda-async");
+export const handler = webhookCallback(bot, "aws-lambda-async", {
+  secretToken: process.env.WEBHOOK_SECRET,
+});
