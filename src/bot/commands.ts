@@ -42,6 +42,7 @@ export async function handleHelp(ctx: BotContext): Promise<void> {
       "/setup — Set up your AI provider, API key, and HSK level\n" +
       "/settime — Change your daily delivery time\n" +
       "/setrecap — Change your weekly recap day and time\n" +
+      "/sethsk — Change your HSK level\n" +
       "/today — Get today's words right now\n" +
       "/settings — View your current settings\n" +
       "/stop — Pause daily word delivery\n" +

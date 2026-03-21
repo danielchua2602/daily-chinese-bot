@@ -29,6 +29,7 @@ import { handleStart, handleHelp, handleSettings, handleStop, handleResume, hand
 import { setupConversation, SETUP_CONVERSATION_ID } from "../bot/conversations/setup.js";
 import { settimeConversation, SETTIME_CONVERSATION_ID } from "../bot/conversations/settime.js";
 import { setrecapConversation, SETRECAP_CONVERSATION_ID } from "../bot/conversations/setrecap.js";
+import { sethskConversation, SETHSK_CONVERSATION_ID } from "../bot/conversations/sethsk.js";
 
 /**
  * Bot instance — created at module level for Lambda warm-start reuse.
@@ -54,6 +55,7 @@ bot.use(
 bot.use(createConversation(setupConversation, { id: SETUP_CONVERSATION_ID }));
 bot.use(createConversation(settimeConversation, { id: SETTIME_CONVERSATION_ID }));
 bot.use(createConversation(setrecapConversation, { id: SETRECAP_CONVERSATION_ID }));
+bot.use(createConversation(sethskConversation, { id: SETHSK_CONVERSATION_ID }));
 
 // 3. Register command handlers
 bot.command("start", handleStart);
@@ -61,6 +63,7 @@ bot.command("help", handleHelp);
 bot.command("setup", (ctx) => ctx.conversation.enter(SETUP_CONVERSATION_ID));
 bot.command("settime", (ctx) => ctx.conversation.enter(SETTIME_CONVERSATION_ID));
 bot.command("setrecap", (ctx) => ctx.conversation.enter(SETRECAP_CONVERSATION_ID));
+bot.command("sethsk", (ctx) => ctx.conversation.enter(SETHSK_CONVERSATION_ID));
 bot.command("settings", handleSettings);
 bot.command("today", handleToday);
 bot.command("stop", handleStop);
