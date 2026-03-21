@@ -59,13 +59,14 @@ export class DailyChineseBotStack extends cdk.Stack {
     });
 
     // ─── SSM Parameters ─────────────────────────────────────────
-    // Secrets are stored in SSM Parameter Store as SecureString and
-    // resolved via CloudFormation dynamic references. The ssm-secure
-    // syntax ensures the actual value never appears in the rendered
-    // CloudFormation template — it's only decrypted at runtime by Lambda.
-    const botToken = "{{resolve:ssm-secure:/daily-chinese-bot/bot-token}}";
-    const encryptionKey = "{{resolve:ssm-secure:/daily-chinese-bot/encryption-key}}";
-    const webhookSecret = "{{resolve:ssm-secure:/daily-chinese-bot/webhook-secret}}";
+    // Secrets are stored in SSM Parameter Store (String type).
+    // Lambda env vars don't support ssm-secure references, and
+    // {{resolve:ssm:...}} can't read SecureString parameters either,
+    // so plain String is the only option for Lambda env var injection.
+    // Access is still controlled by IAM — only these Lambdas can read them.
+    const botToken = "{{resolve:ssm:/daily-chinese-bot/bot-token}}";
+    const encryptionKey = "{{resolve:ssm:/daily-chinese-bot/encryption-key}}";
+    const webhookSecret = "{{resolve:ssm:/daily-chinese-bot/webhook-secret}}";
 
     // ─── Shared Lambda configuration ─────────────────────────────
     // NodejsFunction uses esbuild to bundle TypeScript automatically —
@@ -91,6 +92,7 @@ export class DailyChineseBotStack extends cdk.Stack {
       environment: {
         ...sharedEnv,
         WEBHOOK_SECRET: webhookSecret,
+        ALLOWED_USERS: process.env.ALLOWED_USERS ?? "",
       },
     });
 

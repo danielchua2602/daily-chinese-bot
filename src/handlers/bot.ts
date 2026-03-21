@@ -41,6 +41,17 @@ import { sethskConversation, SETHSK_CONVERSATION_ID } from "../bot/conversations
  */
 const bot = new Bot<BotContext>(process.env.BOT_TOKEN!);
 
+// 0. User allowlist — block unauthorized users before any processing.
+// Parsed once at cold start from comma-separated env var (e.g., "123456,789012").
+const allowedUsers = new Set(
+  (process.env.ALLOWED_USERS ?? "").split(",").filter(Boolean).map(Number),
+);
+
+bot.use((ctx, next) => {
+  if (!allowedUsers.has(ctx.from?.id ?? 0)) return;
+  return next();
+});
+
 // 1. Install conversations plugin with DynamoDB persistence
 bot.use(
   conversations({
@@ -68,6 +79,13 @@ bot.command("settings", handleSettings);
 bot.command("today", handleToday);
 bot.command("stop", handleStop);
 bot.command("resume", handleResume);
+
+// 4. Catch-all for unknown commands — only fires if no command handler matched.
+bot.on("message:text", (ctx) => {
+  if (ctx.message.text.startsWith("/")) {
+    return ctx.reply("Unknown command. Try /help to see available commands.");
+  }
+});
 
 /**
  * The Lambda handler itself.
